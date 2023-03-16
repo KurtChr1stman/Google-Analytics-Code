@@ -1,0 +1,259 @@
+import React, { Fragment, useState } from "react";
+import GoogleAnalyticsDateSchema from "schemas/googleAnalyticsDates";
+import { formatDateInput } from "utils/dateFormater";
+import { Row, Card, Col, Form as RForm, Table } from "react-bootstrap";
+import { Formik, Form } from "formik";
+import DatePicker from "react-flatpickr";
+import ApexCharts from "./ApexCharts";
+import Icon from "@mdi/react";
+import { mdiSquareRounded } from "@mdi/js";
+import SocialMediaTraffic from "./SocialMediaTraffic";
+import {
+  SessionChartSeries,
+  SessionChartOptions,
+  TrafficChannelChartSeries,
+  TrafficChannelChartOptions,
+} from "components/dashboard/analytics/ChartData";
+import UsersByCityGraph from "./graphs/UsersByCityGraph";
+import OperatingSystemGraph from "./graphs/OperatingSystemGraph";
+import BrowersGraph from "./graphs/BrowsersGraph";
+import MostViewedPagesGraph from "./graphs/MostViewedPagesGraph";
+import UsersGraph from "./graphs/UsersGraph";
+import UniqueVistorsGraph from "./graphs/UniqueVistorGraph";
+import BounceRateGraph from "./graphs/BounceRateGraph";
+import AverageTimeOnPage from "./graphs/AverageTimeOnPage";
+import AverageUsersGraph from "./graphs/ActiveUsersGraph";
+
+const Analytics = () => {
+  const [dateRange, setDateRange] = useState({
+    endDate: formatDateInput(new Date()),
+    startDate: formatDateInput(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+  });
+
+  const handleSubmit = (values) => {
+    setDateRange((prevState) => {
+      const dr = { ...prevState };
+      dr.startDate = formatDateInput(values.startDate);
+      dr.endDate = formatDateInput(values.endDate);
+      return dr;
+    });
+  };
+
+  const handleDateChange = (keyName, dateObj, setFieldValue) => {
+    setFieldValue(keyName, formatDateInput(dateObj[0]));
+  };
+
+  return (
+    <Fragment>
+      <Row>
+        <Col lg={12} md={12} sm={12}>
+          <div className="border-bottom pb-4 mb-4 d-md-flex justify-content-between align-items-center">
+            <div className="mb-3 mb-md-0">
+              <h1 className="mb-0 h2 fw-bold">Analytics</h1>
+            </div>
+            <div className="d-flex">
+              <div className="input-group me-3" type="date">
+                <Col>
+                  <Formik
+                    initialValues={dateRange}
+                    validationSchema={GoogleAnalyticsDateSchema}
+                    onSubmit={handleSubmit}
+                  >
+                    {({ values, setFieldValue }) => (
+                      <Form>
+                        <Row>
+                          <Col>
+                            <RForm.Label>Start Date</RForm.Label>
+                            <DatePicker
+                              className="form-control"
+                              value={values.startDate}
+                              onChange={(startdateObj) =>
+                                handleDateChange(
+                                  "startDate",
+                                  startdateObj,
+                                  setFieldValue
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col>
+                            <RForm.Label>End Date</RForm.Label>
+                            <DatePicker
+                              value={values.endDate}
+                              className="form-control"
+                              onChange={(endDateObj) =>
+                                handleDateChange(
+                                  "endDate",
+                                  endDateObj,
+                                  setFieldValue
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col>
+                            <button
+                              className="btn btn-primary mt-4"
+                              type="submit"
+                            >
+                              Submit
+                            </button>
+                          </Col>
+                        </Row>
+                      </Form>
+                    )}
+                  </Formik>
+                </Col>
+              </div>
+            </div>
+          </div>
+        </Col>
+      </Row>
+
+      <Row>
+        <UsersGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+        <UniqueVistorsGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+        <BounceRateGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+        <AverageTimeOnPage
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+      </Row>
+
+      <Row>
+        <Col xl={8} lg={12} md={12} className="mb-4">
+          <Card className="h-100">
+            <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+              <h4 className="mb-0">Sessions</h4>
+            </Card.Header>
+            <Card.Body>
+              <ApexCharts
+                options={SessionChartOptions}
+                series={SessionChartSeries}
+                type="line"
+              />
+            </Card.Body>
+          </Card>
+        </Col>
+        <AverageUsersGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+      </Row>
+
+      <Row>
+        <UsersByCityGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+        <OperatingSystemGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+
+        <Col xl={4} lg={12} md={12} className="mb-4">
+          <Card className="h-100">
+            <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+              <h4 className="mb-0">Traffic Channel</h4>
+            </Card.Header>
+            <Card.Body className="p-1">
+              <ApexCharts
+                options={TrafficChannelChartOptions}
+                series={TrafficChannelChartSeries}
+                type="donut"
+                height={260}
+              />
+              <div className="table-responsive">
+                <Table className="w-100 mt-5 text-nowrap" borderless>
+                  <tbody>
+                    <tr>
+                      <td className="text-dark fw-medium py-1">
+                        <Icon
+                          path={mdiSquareRounded}
+                          className="text-primary fs-5 me-2"
+                          size={0.6}
+                        />
+                        Organic Search
+                      </td>
+                      <td className="text-end fw-semi-bold py-1 text-dark">
+                        2,120
+                      </td>
+                      <td className="text-end  py-1">4.54%</td>
+                    </tr>
+                    <tr>
+                      <td className="text-dark fw-medium py-1">
+                        <Icon
+                          path={mdiSquareRounded}
+                          className="text-success fs-5 me-2"
+                          size={0.6}
+                        />
+                        Direct
+                      </td>
+                      <td className="text-end fw-semi-bold py-1 text-dark">
+                        639
+                      </td>
+                      <td className="text-end  py-1">4.37%</td>
+                    </tr>
+                    <tr>
+                      <td className="text-dark fw-medium py-1">
+                        <Icon
+                          path={mdiSquareRounded}
+                          className="text-danger fs-5 me-2"
+                          size={0.6}
+                        />
+                        Refferrals
+                      </td>
+                      <td className="text-end fw-semi-bold py-1 text-dark">
+                        520
+                      </td>
+                      <td className="text-end py-1">45.14%</td>
+                    </tr>
+                    <tr>
+                      <td className="text-dark fw-medium pt-1">
+                        <Icon
+                          path={mdiSquareRounded}
+                          className="text-info fs-5 me-2"
+                          size={0.6}
+                        />
+                        Social Media
+                      </td>
+                      <td className="text-end fw-semi-bold  pt-1 text-dark">
+                        116
+                      </td>
+                      <td className="text-end pt-1">12.24%</td>
+                    </tr>
+                  </tbody>
+                </Table>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+        <BrowersGraph
+          title="Browsers"
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+        <Col xl={4} lg={12} md={12} className="mb-4">
+          <SocialMediaTraffic title="Social Media Traffic" />
+        </Col>
+        <MostViewedPagesGraph
+          startDateInfo={dateRange.startDate}
+          endDateInfo={dateRange.endDate}
+        />
+      </Row>
+    </Fragment>
+  );
+};
+
+export default Analytics;
