@@ -1,0 +1,114 @@
+import React, { useEffect, useState } from "react";
+import { Col, Card, Table } from "react-bootstrap";
+import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
+import googleAnalyticsService from "../../../../services/googleAnalyticsService";
+import sabioDebug from "sabio-debug";
+const _logger = sabioDebug.extend("Analytics");
+
+const MostViewedPagesGraph = React.memo(function MostViewedPagesGraph({
+  startDateInfo,
+  endDateInfo,
+}) {
+  const [googleAnalyticsQuery] = useState({
+    metrics: [
+      {
+        expression: "ga:users",
+        formattingType: "INTEGER",
+      },
+    ],
+    dimensions: [
+      {
+        name: "ga:pagePath",
+      },
+    ],
+  });
+
+  const [pageData, setPageData] = useState({
+    pageViewArray: [],
+    pageViewArrayMapper: [],
+  });
+
+  useEffect(() => {
+    let payload = { ...googleAnalyticsQuery };
+    payload.startDate = startDateInfo;
+    payload.endDate = endDateInfo;
+    googleAnalyticsService
+      .addSiteData(payload)
+      .then(onSiteDataSuccess)
+      .catch(onSiteDataError);
+  }, [startDateInfo, endDateInfo]);
+
+  const onSiteDataSuccess = (res) => {
+    let responseData = res.reports[0].data.rows
+      ? res.reports[0].data?.rows
+      : [];
+    setPageData((prevState) => {
+      const pd = { ...prevState };
+      pd.pageViewArray = responseData.map(dataMapper);
+      pd.pageViewArrayMapper = pd.pageViewArray.map(mapArrayToPage);
+      return pd;
+    });
+  };
+
+  const dataMapper = (data, index) => {
+    let object = {
+      id: index + 1,
+      link: data.dimensions[0],
+      views: data.metrics[0].values[0],
+    };
+    return object;
+  };
+
+  const onSiteDataError = (err) => {
+    _logger("this is Err in MostViewedPages", err);
+  };
+
+  const mapArrayToPage = (item) => {
+    return (
+      <tr key={item.id}>
+        <td>
+          {item.link}{" "}
+          <Link to="#" className="text-inherit">
+            <i className="fe fe-external-link"></i>
+          </Link>
+        </td>
+        <td className=" text-end ">{item.views}</td>
+      </tr>
+    );
+  };
+
+  return (
+    <Col xl={4} lg={12} md={12} className="mb-4">
+      <Card className="h-100">
+        <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+          <h4 className="mb-0">Most Viewed Pages</h4>
+        </Card.Header>
+        <Card.Body className="p-0">
+          <div className="table-responsive">
+            <Table className="mb-0 text-nowrap">
+              <thead className="table-light">
+                <tr>
+                  <th scope="col" className="">
+                    Page
+                  </th>
+                  <th scope="col" className="text-end ">
+                    Views
+                  </th>
+                </tr>
+              </thead>
+              <tbody>{pageData.pageViewArrayMapper}</tbody>
+            </Table>
+          </div>
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+});
+
+MostViewedPagesGraph.propTypes = {
+  startDateInfo: PropTypes.string.isRequired,
+  endDateInfo: PropTypes.string.isRequired,
+};
+
+export default MostViewedPagesGraph;
