@@ -1,0 +1,109 @@
+import React, { useState, Fragment } from "react";
+import { useEffect } from "react";
+import PropTypes from "prop-types";
+import googleAnalyticsService from "../../../../services/googleAnalyticsService";
+import { Card, Col, Table } from "react-bootstrap";
+import sabioDebug from "sabio-debug";
+const _logger = sabioDebug.extend("Analytics");
+
+const BrowersGraph = React.memo(function BrowersGraph({
+  startDateInfo,
+  endDateInfo,
+}) {
+  const [googleAnalyticsQuery] = useState({
+    metrics: [
+      {
+        expression: "ga:users",
+        formattingType: "INTEGER",
+      },
+    ],
+    dimensions: [
+      {
+        name: "ga:browser",
+      },
+    ],
+  });
+
+  const [pageData, setPageData] = useState({
+    browserArray: [],
+    browserMapper: [],
+    browserTotal: 0,
+  });
+
+  useEffect(() => {
+    let payload = { ...googleAnalyticsQuery };
+    payload.startDate = startDateInfo;
+    payload.endDate = endDateInfo;
+    googleAnalyticsService
+      .addSiteData(payload)
+      .then(onSiteDataSuccess)
+      .catch(onSiteDataError);
+  }, [startDateInfo, endDateInfo]);
+
+  const onSiteDataSuccess = (res) => {
+    let responseData = res.reports[0].data.rows
+      ? res.reports[0].data?.rows
+      : [];
+    setPageData(() => {
+      const pd = { ...pageData };
+      pd.browserArray = responseData;
+      pd.browserTotal = res.reports[0].data?.totals[0].values[0];
+      pd.browserMapper = broswerMapper(pd.browserTotal, pd.browserArray);
+      return pd;
+    });
+  };
+
+  const broswerMapper = (total, array) => {
+    const mapBrowserIno = (data) => {
+      let average = (data.metrics[0].values[0] / total) * 100;
+      return (
+        <Fragment>
+          <tr>
+            <td className="align-middle">{data.dimensions[0]}</td>
+            <td className="text-end ">{average.toFixed(2)}%</td>
+          </tr>
+        </Fragment>
+      );
+    };
+    const browserinfo = array.map(mapBrowserIno);
+    return browserinfo;
+  };
+
+  const onSiteDataError = (err) => {
+    _logger("this is Err in BrowserGraph", err);
+  };
+
+  return (
+    <Col xl={4} lg={12} md={12} className="mb-4">
+      <Card className="h-100">
+        <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+          <h4 className="mb-0">Users by Browser</h4>
+        </Card.Header>
+        <Card.Body className="p-0">
+          <div className="table-responsive">
+            <Table className="mb-0 text-nowrap">
+              <thead className="table-light">
+                <tr>
+                  <th scope="col" className="">
+                    Browser
+                  </th>
+                  <th scope="col" className="text-end ">
+                    Percentage of Users
+                  </th>
+                </tr>
+              </thead>
+              <tbody>{pageData.browserMapper}</tbody>
+            </Table>
+          </div>
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+});
+
+BrowersGraph.propTypes = {
+  startDateInfo: PropTypes.string.isRequired,
+  endDateInfo: PropTypes.string.isRequired,
+};
+
+export default BrowersGraph;
