@@ -1,0 +1,101 @@
+import React, { Fragment, useState } from "react";
+import { useEffect } from "react";
+import PropTypes from "prop-types";
+import googleAnalyticsService from "../../../../services/googleAnalyticsService";
+import { Card, Col, Table } from "react-bootstrap";
+import sabioDebug from "sabio-debug";
+const _logger = sabioDebug.extend("Analytics");
+
+const UsersByCountryGraph = React.memo(function UsersByCountryGraph({
+  startDateInfo,
+  endDateInfo,
+}) {
+  const [googleAnalyticsQuery] = useState({
+    metrics: [
+      {
+        expression: "ga:users",
+        formattingType: "INTEGER",
+      },
+    ],
+    dimensions: [
+      {
+        name: "ga:city",
+      },
+    ],
+  });
+
+  const [pageData, setPageData] = useState({
+    usersByCountryArray: [],
+    usersByCountryMapper: [],
+  });
+
+  useEffect(() => {
+    let payload = { ...googleAnalyticsQuery };
+    payload.startDate = startDateInfo;
+    payload.endDate = endDateInfo;
+    googleAnalyticsService
+      .addSiteData(payload)
+      .then(onSiteDataSuccess)
+      .catch(onSiteDataError);
+  }, [startDateInfo, endDateInfo]);
+
+  const onSiteDataSuccess = (res) => {
+    let responseData = res.reports[0].data.rows
+      ? res.reports[0].data?.rows
+      : [];
+    setPageData(() => {
+      const pd = { ...pageData };
+      pd.usersByCountryArray = responseData;
+      pd.usersByCountryMapper = pd.usersByCountryArray.map(mapByCity);
+      return pd;
+    });
+  };
+
+  const mapByCity = (data, index) => {
+    return (
+      <Fragment>
+        <tr key={index + 1}>
+          <td className="align-middle">{data.dimensions[0]}</td>
+          <td className="text-end ">{data.metrics[0].values[0]}</td>
+        </tr>
+      </Fragment>
+    );
+  };
+
+  const onSiteDataError = (err) => {
+    _logger("this is Err in UniqueVistorGraph", err);
+  };
+  return (
+    <Col xl={4} lg={12} md={12} className="mb-4">
+      <Card className="h-100">
+        <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+          <h4 className="mb-0">Users by City</h4>
+        </Card.Header>
+        <Card.Body className="p-0">
+          <div className="table-responsive">
+            <Table className="mb-0 text-nowrap">
+              <thead className="table-light">
+                <tr>
+                  <th scope="col" className="">
+                    City
+                  </th>
+                  <th scope="col" className="text-end ">
+                    Number of Users
+                  </th>
+                </tr>
+              </thead>
+              <tbody>{pageData.usersByCountryMapper}</tbody>
+            </Table>
+          </div>
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+});
+
+UsersByCountryGraph.propTypes = {
+  startDateInfo: PropTypes.string.isRequired,
+  endDateInfo: PropTypes.string.isRequired,
+};
+
+export default UsersByCountryGraph;
