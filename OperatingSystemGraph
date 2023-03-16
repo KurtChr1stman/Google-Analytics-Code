@@ -1,0 +1,146 @@
+import React, { useState } from "react";
+import { useEffect } from "react";
+import PropTypes from "prop-types";
+import googleAnalyticsService from "../../../../services/googleAnalyticsService";
+import { Card, Col, ListGroup } from "react-bootstrap";
+import { OperatingSystemChartOptions } from "components/dashboard/analytics/ChartData";
+import ApexCharts from "../ApexCharts";
+import Icon from "@mdi/react";
+import { mdiSquareRounded } from "@mdi/js";
+import sabioDebug from "sabio-debug";
+const _logger = sabioDebug.extend("Analytics");
+
+const OperatingSystemGraph = React.memo(function OperatingSystemGraph({
+  startDateInfo,
+  endDateInfo,
+}) {
+  const [googleAnalyticsQuery] = useState({
+    metrics: [
+      {
+        expression: "ga:users",
+        formattingType: "INTEGER",
+      },
+    ],
+    dimensions: [
+      {
+        name: "ga:operatingSystem",
+      },
+    ],
+  });
+
+  const [pageData, setPageData] = useState({
+    operatingSystemNumbers: [
+      { name: "Windows", count: 0 },
+      { name: "macOs", count: 0 },
+      { name: "linux", count: 0 },
+      { name: "android", count: 0 },
+    ],
+    operatingSystemMapper: [],
+  });
+
+  useEffect(() => {
+    let payload = { ...googleAnalyticsQuery };
+    payload.startDate = startDateInfo;
+    payload.endDate = endDateInfo;
+    googleAnalyticsService
+      .addSiteData(payload)
+      .then(onSiteDataSuccess)
+      .catch(onSiteDataError);
+  }, [startDateInfo, endDateInfo]);
+
+  const onSiteDataSuccess = (res) => {
+    let responseData = res.reports[0].data.rows
+      ? res.reports[0].data?.rows
+      : [];
+    setPageData((prevState) => {
+      const pd = { ...prevState };
+      pd.operatingSystemNumbers.forEach((opSys) => {
+        responseData.forEach((data) => {
+          if (data.dimensions[0] === opSys.name) {
+            opSys.count = parseInt(data.metrics[0].values[0]);
+          }
+        });
+      });
+      pd.operatingSystemMapper =
+        pd.operatingSystemNumbers.map(mapOperationSystem);
+      return pd;
+    });
+  };
+
+  const mapOperationSystem = (data) => {
+    return data.count;
+  };
+
+  const onSiteDataError = (err) => {
+    _logger("this is Err in OperatingSystemGraph", err);
+  };
+
+  return (
+    <Col xl={4} lg={12} md={12} className="mb-4">
+      <Card className="h-100">
+        <Card.Header className="align-items-center card-header-height d-flex justify-content-between align-items-center">
+          <h4 className="mb-0">Operating System</h4>
+        </Card.Header>
+        <Card.Body>
+          <ApexCharts
+            options={OperatingSystemChartOptions}
+            series={pageData.operatingSystemMapper}
+            type="polarArea"
+            height={350}
+          />
+          <div className="mt-4 d-flex justify-content-center">
+            <ListGroup as="ul" bsPrefix="list-inline" className="mb-0">
+              <ListGroup.Item as="li" bsPrefix="list-inline-item mx-3">
+                <h5 className="mb-0 d-flex align-items-center fs-5 lh-1">
+                  <Icon
+                    path={mdiSquareRounded}
+                    className="text-danger fs-5 me-2"
+                    size={0.6}
+                  />
+                  Windows
+                </h5>
+              </ListGroup.Item>
+              <ListGroup.Item as="li" bsPrefix="list-inline-item mx-3">
+                <h5 className="mb-0 d-flex align-items-center  fs-5 lh-1">
+                  <Icon
+                    path={mdiSquareRounded}
+                    className="text-success fs-5 me-2"
+                    size={0.6}
+                  />
+                  macOS
+                </h5>
+              </ListGroup.Item>
+              <ListGroup.Item as="li" bsPrefix="list-inline-item mx-3">
+                <h5 className="mb-0 d-flex align-items-center  fs-5 lh-1">
+                  <Icon
+                    path={mdiSquareRounded}
+                    className="text-primary fs-5 me-2"
+                    size={0.6}
+                  />
+                  Linux
+                </h5>
+              </ListGroup.Item>
+              <ListGroup.Item as="li" bsPrefix="list-inline-item mx-3">
+                <h5 className="mb-0 d-flex align-items-center  fs-5 lh-1">
+                  <Icon
+                    path={mdiSquareRounded}
+                    className="text-info fs-5 me-2"
+                    size={0.6}
+                  />
+                  Android
+                </h5>
+              </ListGroup.Item>
+            </ListGroup>
+          </div>
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+});
+
+OperatingSystemGraph.propTypes = {
+  startDateInfo: PropTypes.string.isRequired,
+  endDateInfo: PropTypes.string.isRequired,
+};
+
+export default OperatingSystemGraph;
