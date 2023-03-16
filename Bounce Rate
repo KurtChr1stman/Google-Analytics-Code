@@ -1,0 +1,118 @@
+import React, { useEffect, useState } from "react";
+import { Col } from "react-bootstrap";
+import PropTypes from "prop-types";
+import googleAnalyticsService from "../../../../services/googleAnalyticsService";
+import StatRightChart from "../StatRightChart";
+import sabioDebug from "sabio-debug";
+import { formatDateInput } from "utils/dateFormater";
+
+const _logger = sabioDebug.extend("Analytics");
+const BounceRateGraph = React.memo(function BounceRateGraph({
+  startDateInfo,
+  endDateInfo,
+}) {
+  const [googleAnalyticsQuery] = useState({
+    metrics: [
+      {
+        expression: "ga:bounceRate",
+        formattingType: "INTEGER",
+      },
+    ],
+    dimensions: [
+      {
+        name: "ga:date",
+      },
+    ],
+  });
+
+  const [pageData, setPageData] = useState({
+    bounceRateByDay: [],
+    bounceRateDataArray: [{ name: "Bonus Rate", data: [] }],
+    bounceRateTotal: 0,
+  });
+
+  useEffect(() => {
+    let payload = { ...googleAnalyticsQuery };
+    payload.startDate = startDateInfo;
+    payload.endDate = endDateInfo;
+    googleAnalyticsService
+      .addSiteData(payload)
+      .then(onSiteDataSuccess)
+      .catch(onSiteDataError);
+  }, [startDateInfo, endDateInfo]);
+
+  const onSiteDataSuccess = (res) => {
+    const startDateArray = startDateInfo.split("-");
+    const endDateArray = endDateInfo.split("-");
+    const newStartDate = `${startDateArray[1]}-${startDateArray[2]}-${startDateArray[0]}`;
+    const newEndDate = `${endDateArray[1]}-${endDateArray[2]}-${endDateArray[0]}`;
+
+    const dateStart = new Date(newStartDate);
+    const dateEnd = new Date(newEndDate);
+    const dateMath = Math.round((dateEnd - dateStart) / (1000 * 60 * 60 * 24));
+    const arr = new Array(dateMath + 1).fill(0);
+    const dateDataArray = [];
+
+    for (var i = 0; i < dateMath + 1; i++) {
+      var newDate = new Date(newStartDate);
+      newDate.setDate(newDate.getDate() + i);
+      dateDataArray.push(formatDateInput(newDate));
+    }
+
+    let responseData = res.reports[0].data.rows
+      ? res.reports[0].data?.rows
+      : [];
+
+    setPageData(() => {
+      const pd = { ...pageData };
+      pd.bounceRateByDay = responseData;
+      pd.bounceRateTotal = `${parseInt(
+        res.reports[0].data.totals[0].values[0]
+      ).toFixed(2)}%`;
+      pd.bounceRateByDay.map(mapUserData);
+      pd.bounceRateDataArray = [{ name: "Bonus Rate", data: arr }];
+      return pd;
+    });
+
+    const mapUserData = (data) => {
+      const year = data.dimensions[0].substring(0, 4);
+      const month = data.dimensions[0].substring(4, 6);
+      const day = data.dimensions[0].substring(6, 8);
+      const newDate = `${year}-${month}-${day}`;
+      for (let i = 0; i < dateDataArray.length; i++) {
+        const element = dateDataArray[i];
+        if (newDate === element) {
+          const dateNumber = parseInt(data.metrics[0].values[0]);
+          arr.splice(i, 1, dateNumber);
+        }
+      }
+    };
+  };
+
+  const onSiteDataError = (err) => {
+    _logger("this is Err in BounceRate", err);
+  };
+
+  return (
+    <Col xl={3} lg={6} md={12} sm={12}>
+      <StatRightChart
+        title="BOUNCE RATE"
+        value={pageData.bounceRateTotal}
+        summary="Number of pending"
+        summaryValue=""
+        summaryIcon=""
+        isSummaryIconShown
+        classValue="mb-4"
+        chartName="BounceChart"
+        series={pageData.bounceRateDataArray}
+      />
+    </Col>
+  );
+});
+
+BounceRateGraph.propTypes = {
+  startDateInfo: PropTypes.string.isRequired,
+  endDateInfo: PropTypes.string.isRequired,
+};
+
+export default BounceRateGraph;
